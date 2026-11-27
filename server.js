@@ -1,16 +1,19 @@
 // Configure DNS resolution before any network operations
 require('./config/dns');
 
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+
+// Load environment variables from backend/.env regardless of CWD
+dotenv.config({ path: path.resolve(__dirname, '.env') });
+dotenv.config(); // fallback to current cwd if any
+
 const { testConnection, getDbStatus } = require('./config/db');
 const { connectMongoDB, getMongoStatus } = require('./config/mongodb');
 const authRoutes = require('./routes/authRoutes');
 const blogRoutes = require('./routes/blogRoutes');
-
-// Load environment variables
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -112,10 +115,10 @@ app.use((err, req, res, next) => {
 let server = null;
 
 function startServer(port = PORT) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const s = app.listen(port, async () => {
       console.log('===================================================');
-      console.log(` THIRAN (திறன்) Backend Server - Module 03`);
+      console.log(` THIRAN (திறன்) Backend Server - Module 04`);
       console.log(` Running on: http://localhost:${port}`);
       console.log(` Health Check: http://localhost:${port}/api/health`);
       console.log(` Environment: ${process.env.NODE_ENV || 'development'}`);
@@ -125,6 +128,9 @@ function startServer(port = PORT) {
       await connectMongoDB();
       await testConnection();
       resolve(s);
+    });
+    s.on('error', (err) => {
+      reject(err);
     });
     server = s;
   });
