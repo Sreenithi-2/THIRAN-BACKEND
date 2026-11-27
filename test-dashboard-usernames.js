@@ -140,7 +140,9 @@ function runConsistencyTest() {
         }
       },
       window: {
-        location: { pathname: '/dashboard.html', search: '' }
+        location: { pathname: '/dashboard.html', search: '' },
+        addEventListener: () => {},
+        dispatchEvent: () => {}
       },
       encodeURIComponent,
       console: { log: () => {}, warn: () => {}, error: () => {} },

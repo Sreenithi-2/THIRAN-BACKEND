@@ -2,7 +2,7 @@
 
 Backend service for **THIRAN (திறன்)** – Online Learning Platform.
 
-Built with **Node.js**, **Express.js**, **MySQL (mysql2)**, **bcryptjs**, and **jsonwebtoken (JWT)**.
+Built with **Node.js**, **Express.js**, **MongoDB Atlas (Mongoose)**, **MySQL (mysql2)**, **bcryptjs**, and **jsonwebtoken (JWT)**.
 
 ---
 
@@ -12,22 +12,27 @@ Built with **Node.js**, **Express.js**, **MySQL (mysql2)**, **bcryptjs**, and **
 THIRAN/
 ├── backend/
 │   ├── config/
+│   │   ├── mongodb.js            # MongoDB Atlas connection manager (Mongoose)
 │   │   └── db.js                 # MySQL pool & database connection manager
+│   ├── models/
+│   │   ├── User.js               # Mongoose User model (Module 03)
+│   │   └── Blog.js               # Mongoose Blog model (Module 03)
 │   ├── controllers/
-│   │   ├── authController.js     # User registration and login controller
+│   │   ├── authController.js     # User registration, login, getMe, logout
 │   │   └── blogController.js     # Blog creation, list, and details controller
 │   ├── middleware/
 │   │   └── authMiddleware.js     # JWT Bearer token authentication middleware
 │   ├── routes/
 │   │   ├── authRoutes.js         # /api/auth routes
 │   │   └── blogRoutes.js         # /api/blogs routes
-│   ├── .env                      # Environment configuration
+│   ├── .env                      # Environment configuration (ignored by git)
 │   ├── .env.example              # Template environment variables
 │   ├── .gitignore                # Git ignore rules
 │   ├── database.sql              # MySQL schema & tables initialization script
 │   ├── package.json              # Project metadata & npm dependencies
 │   ├── server.js                 # Express server bootstrap & middleware
-│   ├── test-api.js               # Automated 9-endpoint testing harness
+│   ├── test-mongodb.js           # Mongoose models & MongoDB config verification
+│   ├── test-api.js               # Automated 13-point API testing harness
 │   └── README.md                 # Backend documentation & setup guide
 ├── css/                          # Frontend CSS (preserved)
 ├── js/                           # Frontend JS (integrated with backend API)
@@ -47,13 +52,42 @@ THIRAN/
 
 - **Runtime:** Node.js (v18+)
 - **Framework:** Express.js (v4.21+)
-- **Database:** MySQL 8.0+
-- **Database Driver:** `mysql2/promise` (connection pooling & parameterized queries)
+- **Primary Database (Module 03):** MongoDB Atlas (Cloud)
+- **ODM:** `mongoose` (v9+)
+- **Secondary Database:** MySQL 8.0+ (`mysql2/promise`)
 - **Password Hashing:** `bcryptjs` (salt rounds: 10)
 - **Authentication:** `jsonwebtoken` (JWT Bearer tokens)
 - **Configuration:** `dotenv`
 - **Cross-Origin Requests:** `cors`
 - **Development Monitor:** `nodemon`
+
+---
+
+## 3. MongoDB Atlas Configuration (Module 03)
+
+Configure your MongoDB Atlas cluster connection string in `backend/.env`:
+
+```env
+MONGODB_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/thiran_db?retryWrites=true&w=majority
+MONGODB_DB_NAME=thiran_db
+```
+
+### Mongoose Models:
+1. **User Model (`backend/models/User.js`)**:
+   - `full_name`: String, required, trim, minlength: 3
+   - `email`: String, required, unique, lowercase, regex validated
+   - `phone`: String, default null
+   - `password`: String, hashed with bcryptjs
+   - `created_at`: Date
+   - Virtual `id` and safe `toJSON` transformation (password and `__v` excluded).
+
+2. **Blog Model (`backend/models/Blog.js`)**:
+   - `user_id`: ObjectId referencing `User` model, required
+   - `title`: String, required, trim
+   - `content`: String, required, trim
+   - `created_at`: Date
+   - `updated_at`: Date
+   - Virtual `id` and safe `toJSON` transformation.
 
 ---
 
@@ -301,14 +335,58 @@ The server runs on **`http://localhost:5000`**.
   - `400 Bad Request` (Invalid blog ID format)
   - `404 Not Found` (Blog ID does not exist)
 
+#### 4. Update Blog by ID (Protected)
+- **`PUT /api/blogs/:id`**
+- **Headers:**
+  - `Content-Type: application/json`
+  - `Authorization: Bearer <JWT_TOKEN>`
+- **Request Body:**
+  ```json
+  {
+    "title": "Advanced Full Stack Engineering with MongoDB Atlas",
+    "category": "Database",
+    "content": "Updated content covering replica sets, transactions, and indexing."
+  }
+  ```
+- **Success Response (200 OK):** Returns updated blog document with author metadata.
+- **Error Responses:**
+  - `400 Bad Request` (Invalid ID format or empty update)
+  - `401 Unauthorized` (Missing or invalid token)
+  - `403 Forbidden` (User is not the author of this blog post)
+  - `404 Not Found` (Blog ID does not exist)
+
+#### 5. Delete Blog by ID (Protected)
+- **`DELETE /api/blogs/:id`**
+- **Headers:** `Authorization: Bearer <JWT_TOKEN>`
+- **Success Response (200 OK):**
+  ```json
+  {
+    "success": true,
+    "message": "Blog post deleted successfully from MongoDB.",
+    "id": "6740bc1..."
+  }
+  ```
+- **Error Responses:**
+  - `401 Unauthorized` (Token missing)
+  - `403 Forbidden` (Not author)
+  - `404 Not Found` (Blog not found)
+
 ---
 
 ## 7. Automated Testing Suite
 
-To run the automated 9-point verification test:
+To run the automated tests:
 ```bash
 cd backend
+
+# 1. Run Mongoose Models & Configuration Unit Tests
+npm run test:mongo
+
+# 2. Run Comprehensive 18-Point API Integration Test Suite
 npm test
+
+# 3. Verify Live MongoDB Atlas Database Operations
+npm run test:atlas
 ```
 
 ### Verified Test Cases:

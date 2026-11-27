@@ -1,7 +1,11 @@
+// Configure DNS resolution before any network operations
+require('./config/dns');
+
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const { testConnection, getDbStatus } = require('./config/db');
+const { connectMongoDB, getMongoStatus } = require('./config/mongodb');
 const authRoutes = require('./routes/authRoutes');
 const blogRoutes = require('./routes/blogRoutes');
 
@@ -36,16 +40,21 @@ app.get('/', (req, res) => {
     project: 'THIRAN (திறன்) - Online Learning Platform',
     status: 'Running',
     version: '1.0.0',
+    module: 'Module 03 - MongoDB Atlas Integration',
     documentation: {
       health: 'GET /api/health',
       auth: {
         register: 'POST /api/auth/register',
-        login: 'POST /api/auth/login'
+        login: 'POST /api/auth/login',
+        me: 'GET /api/auth/me (Bearer JWT required)',
+        logout: 'POST /api/auth/logout'
       },
       blogs: {
         list: 'GET /api/blogs',
         getById: 'GET /api/blogs/:id',
-        create: 'POST /api/blogs (Bearer JWT required)'
+        create: 'POST /api/blogs (Bearer JWT required)',
+        update: 'PUT /api/blogs/:id (Bearer JWT required)',
+        delete: 'DELETE /api/blogs/:id (Bearer JWT required)'
       }
     }
   });
@@ -53,14 +62,27 @@ app.get('/', (req, res) => {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
+  const mongoStatus = getMongoStatus();
   const dbStatus = getDbStatus();
+
   res.status(200).json({
     status: 'OK',
     message: 'THIRAN backend service is operational.',
     timestamp: new Date().toISOString(),
     uptime: `${Math.floor(process.uptime())} seconds`,
-    database: dbStatus.connected ? 'Connected (MySQL)' : 'Fallback Mode (MySQL configuration needed)',
-    databaseDetails: dbStatus
+    primaryDatabase: {
+      type: 'MongoDB Atlas (Module 03)',
+      status: mongoStatus.ready ? 'Connected' : mongoStatus.status,
+      database: mongoStatus.database,
+      isAtlas: mongoStatus.isAtlas,
+      configured: mongoStatus.configured,
+      error: mongoStatus.error
+    },
+    secondaryDatabase: {
+      type: 'MySQL',
+      connected: dbStatus.connected,
+      mode: dbStatus.mode
+    }
   });
 });
 
@@ -93,13 +115,14 @@ function startServer(port = PORT) {
   return new Promise((resolve) => {
     const s = app.listen(port, async () => {
       console.log('===================================================');
-      console.log(` THIRAN (திறன்) Backend Server`);
+      console.log(` THIRAN (திறன்) Backend Server - Module 03`);
       console.log(` Running on: http://localhost:${port}`);
       console.log(` Health Check: http://localhost:${port}/api/health`);
       console.log(` Environment: ${process.env.NODE_ENV || 'development'}`);
       console.log('===================================================');
 
-      // Verify database connectivity
+      // Initialize database connections
+      await connectMongoDB();
       await testConnection();
       resolve(s);
     });
